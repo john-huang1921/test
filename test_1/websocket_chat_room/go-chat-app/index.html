@@ -1,51 +1,95 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket Chat Room</title>
+    <title>聊天室</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        #chat-box { height: 300px; border: 1px solid #ccc; overflow-y: scroll; margin-bottom: 10px; padding: 10px; }
-        #message-input { width: 70%; padding: 5px; }
-        #send-button, #download-button { padding: 5px 10px; }
+        #Title {  width: 400px; margin: 0 auto; color: #1b30eb;}
+        #chat-container { width: 400px; margin: 0 auto; }
+        #chat-messages { height: 300px; border: 1px solid #ccc; overflow-y: scroll; margin-bottom: 10px; padding: 10px; }
+        #message-input, #username-input { width: 200px; padding: 5px; margin-right: 5px; }
+        #send-button, #clear-button, #download-button { padding: 5px 10px; margin-right: 5px; }
     </style>
 </head>
 <body>
-    <h1>WebSocket Chat Room</h1>
-    <div id="chat-box"></div>
-    <input type="text" id="username-input" placeholder="Your username">
-    <input type="text" id="message-input" placeholder="Type your message...">
-    <button id="send-button">Send</button>
-    <button id="download-button">Download Chat History</button>
+    <h1 id="Title">Chatting Room</h1>
+    <div id="chat-container">
+        
+        <div id="chat-messages"></div>
+        <input type="text" id="username-input" placeholder="輸入您的名稱">
+        <input type="text" id="message-input" placeholder="輸入訊息...">
+        <button id="send-button">發送</button>
+        <button id="clear-button">清除歷史記錄</button>
+        <button id="download-button">下載歷史記錄</button>
+    </div>
 
     <script>
-        const socket = new WebSocket('ws://localhost:8080/ws');
-        const chatBox = document.getElementById('chat-box');
+        const chatMessages = document.getElementById('chat-messages');
         const usernameInput = document.getElementById('username-input');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
+        const clearButton = document.getElementById('clear-button');
         const downloadButton = document.getElementById('download-button');
+        const socket = new WebSocket('ws://' + window.location.host + '/ws');
+
+        // 頁面加載時獲取歷史記錄
+        window.onload = function() {
+            fetch('/history')
+                .then(response => response.json())
+                .then(history => {
+                    history.forEach(message => appendMessage(message));
+                })
+                .catch(error => console.error('獲取歷史記錄失敗:', error));
+        };
 
         socket.onmessage = function(event) {
             const message = JSON.parse(event.data);
-            chatBox.innerHTML += `<p><strong>${message.username}:</strong> ${message.content}</p>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
+            if (message.type === 'history_cleared') {
+                chatMessages.innerHTML = '';
+                console.log('聊天記錄已清除');
+            } else {
+                appendMessage(message);
+            }
         };
 
+        function appendMessage(message) {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `${message.username}: ${message.content}`;
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
         sendButton.onclick = function() {
-            const username = usernameInput.value.trim() || 'Anonymous';
+            const username = usernameInput.value.trim() || '匿名';
             const content = messageInput.value.trim();
             if (content) {
-                const message = { username, content };
+                const message = { username: username, content: content };
                 socket.send(JSON.stringify(message));
                 messageInput.value = '';
             }
         };
 
+        clearButton.onclick = function() {
+            fetch('/clear', { method: 'POST' })
+                .then(response => {
+                    if (response.ok) {
+                        console.log('已發送清除聊天記錄請求');
+                    } else {
+                        console.error('清除聊天記錄請求失敗');
+                    }
+                })
+                .catch(error => console.error('請求錯誤:', error));
+        };
+
         downloadButton.onclick = function() {
             window.location.href = '/download';
         };
+
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendButton.click();
+            }
+        });
     </script>
 </body>
 </html>
