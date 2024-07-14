@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat Room</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        #chat-box { height: 300px; border: 1px solid #ccc; overflow-y: scroll; margin-bottom: 10px; padding: 10px; }
+        #message-input { width: 70%; padding: 5px; }
+        #send-button, #download-button { padding: 5px 10px; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Chat Room</h1>
+    <div id="chat-box"></div>
+    <input type="text" id="username-input" placeholder="Your username">
+    <input type="text" id="message-input" placeholder="Type your message...">
+    <button id="send-button">Send</button>
+    <button id="download-button">Download Chat History</button>
+
+    <script>
+        const socket = new WebSocket('ws://localhost:8080/ws');
+        const chatBox = document.getElementById('chat-box');
+        const usernameInput = document.getElementById('username-input');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const downloadButton = document.getElementById('download-button');
+
+        socket.onmessage = function(event) {
+            const message = JSON.parse(event.data);
+            chatBox.innerHTML += `<p><strong>${message.username}:</strong> ${message.content}</p>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        sendButton.onclick = function() {
+            const username = usernameInput.value.trim() || 'Anonymous';
+            const content = messageInput.value.trim();
+            if (content) {
+                const message = { username, content };
+                socket.send(JSON.stringify(message));
+                messageInput.value = '';
+            }
+        };
+
+        downloadButton.onclick = function() {
+            window.location.href = '/download';
+        };
+    </script>
+</body>
+</html>
